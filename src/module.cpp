@@ -84,7 +84,7 @@ public:
         
                 
         // Serialize the task into a binary stream
-        o << d;
+        o.write_data(&d,sizeof(Dimensions));
 
         // Advance in Y and get X back to 0
         if (d.curr_x > MAX_WIDTH)
@@ -153,7 +153,8 @@ public:
         spitz::ostream o;
         
         // Deserialize the task, process it and serialize the result
-        dim << o;
+        result.read_data(&d,sizeof(Dimensions));
+        //dim << o;
 
         int offset_x, offset_y;
 
@@ -168,7 +169,7 @@ public:
         imgPart.imagePart = rayTracer->traceRaysMatrix(dim.curr_x, dim.curr_y, offset_x, offset_y);
 
         // Must find a way to take the relevant pixels from this imgPart and add it to final Image
-        o << imgPart;
+        o.write_data(&imgPart,sizeof(ImagePartition));
 
         // Send the result to the Spitz runtime
         result.push(o);
@@ -200,7 +201,7 @@ public:
         // to compose the final result
         // ...
         ImagePartition imgPar;
-        imgPar << result;
+        result.read_data(&imgPar,sizeof(ImagePartition));
 
         // this guy here sums the matrixes accordingly
         finalImg->SumColorFactor(&imgPar.imagePart);
