@@ -32,24 +32,71 @@
 // #define SPITZ_SERIAL_DEBUG
 
 #include <spitz/spitz.hpp>
-
+#include <stdlib.h>
+#include <string.h>
+#include <fstream>
+#include <ctime>
 #include <iostream>
+#include "RayTracer.h"
+#include "Image.h"
+
+using namespace std;
+
+#define MAX_WIDTH 1920
+#define MAX_HEIGHT 1080
+#define MAX_REFLECTIONS 10
+
+#define OFFSET_WIDTH 250
+#define OFFSET_HEIGHT 250
+
+
+typedef struct Dimensions{
+    int curr_x;
+    int curr_y;
+};
+
+typedef struct ImagePartition{
+    int init_x;
+    int init_y;
+    int final_x;
+    int final_y;
+    Image imagePart;
+};
 
 // This class creates tasks.
 class job_manager : public spitz::job_manager
 {
+private:
+    Dimensions d;
+
 public:
     job_manager(int argc, const char *argv[], spitz::istream& jobinfo)
     {
         std::cout << "[JM] Job manager created." << std::endl;
+        d.curr_x = 0;
+        d.curr_y = 0;
     }
     
     bool next_task(const spitz::pusher& task)
     {
         spitz::ostream o;
+
+        
                 
         // Serialize the task into a binary stream
-        // ...
+        o << d;
+
+        // Advance in Y and get X back to 0
+        if (d.curr_x > MAX_WIDTH)
+        {
+            // Stop creating tasks
+            if (d.curr_y > MAX_HEIGHT)
+                return false;
+            d.curr_y = std::min<int>(d.curr_y + OFFSET_HEIGHT, MAX_HEIGHT);
+            d.curr_x = 0;
+        }
+        else
+            d.curr_x += std::min<int>(d.curr_x + OFFSET_WIDTH, MAX_WIDTH);     
 
         std::cout << "[JM] Task generated." << std::endl;
         
@@ -75,10 +122,29 @@ public:
 // on changing its internal state, for instance, OpenCL (see clpi example).
 class worker : public spitz::worker
 {    
+private:
+    RayTracer* rayTracer;
+    Dimensions dim;
+    ImagePartition imgPart;
 public:
     worker(int argc, const char *argv[])
     {
         std::cout << "[WK] Worker created." << std::endl;
+
+        // Instanciating RayTracer
+        rayTracer = new RayTracer(MAX_WIDTH,MAX_HEIGHT,MAX_REFLECTIONS,atoi(argv[2]),atoi(argv[3]));
+        
+        // Opening and reading scene from argv1
+        char* inFile = (char*)argv[1];
+        ifstream inFileStream;
+        inFileStream.open(inFile, ifstream::in);
+
+        if (inFileStream.fail()) {
+            cerr << "Failed opening file" << endl;
+            exit(EXIT_FAILURE);
+        }
+        rayTracer->readScene(inFileStream);
+        inFileStream.close();
     }
     
     int run(spitz::istream& task, const spitz::pusher& result)
@@ -87,8 +153,23 @@ public:
         spitz::ostream o;
         
         // Deserialize the task, process it and serialize the result
-        // ...
-        
+        dim << o;
+
+        int offset_x, offset_y;
+
+        offset_x = ((dim.curr_x + OFFSET_WIDTH) > MAX_WIDTH) ? MAX_WIDTH : (dim.curr_x + OFFSET_WIDTH);
+        offset_y = ((dim.curr_y + OFFSET_HEIGHT) > MAX_HEIGHT) ? MAX_HEIGHT : (dim.curr_y + OFFSET_HEIGHT);
+
+        // Must finish implementation of this function!
+        imgPart.init_x = dim.curr_x;
+        imgPart.init_y = dim.curr_y;
+        imgPart.final_x = offset_x;
+        imgPart.final_y = offset_y;
+        imgPart.imagePart = rayTracer->traceRaysMatrix(dim.curr_x, dim.curr_y, offset_x, offset_y);
+
+        // Must find a way to take the relevant pixels from this imgPart and add it to final Image
+        o << imgPart;
+
         // Send the result to the Spitz runtime
         result.push(o);
         
@@ -103,10 +184,14 @@ public:
 // results have been received.
 class committer : public spitz::committer
 {
+private: 
+    Image* finalImg;
 public:
     committer(int argc, const char *argv[], spitz::istream& jobinfo)
     {
         std::cout << "[CO] Committer created." << std::endl;
+        
+        finalImg = new Image(MAX_WIDTH, MAX_HEIGHT);
     }
     
     int commit_task(spitz::istream& result)
@@ -114,6 +199,11 @@ public:
         // Deserialize the result from the task and use it 
         // to compose the final result
         // ...
+        ImagePartition imgPar;
+        imgPar << result;
+
+        // this guy here sums the matrixes accordingly
+        finalImg->SumColorFactor(&imgPar.imagePart);
 
         std::cout << "[CO] Result committed." << std::endl;
 
@@ -124,15 +214,16 @@ public:
     // results, or if the final result must be serialized to the 
     // Spitz Main, then an additional Commit Job is called.
 
-    // int commit_job(const spitz::pusher& final_result) 
-    // {
-    //     // Process the final result
-    //
-    //     // A result must be pushed even if the final 
-    //     // result is not passed on
-    //     final_result.push(NULL, 0);
-    //     return 0;
-    // }
+    int commit_job(const spitz::pusher& final_result) 
+    {
+        // Process the final result
+        // A result must be pushed even if the final 
+        // result is not passed on
+        string outFile = "out.tga";
+        finalImg->WriteTga(outFile.c_str(), false);
+        //final_result.push(NULL, 0);
+        return 0;
+    }
 
     ~committer()
     {

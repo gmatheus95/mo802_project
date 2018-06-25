@@ -9,6 +9,7 @@
 #include <fstream>
 #include "Vector.h"
 #include "Camera.h"
+#include "Image.h"
 
 class Ray;
 class Color;
@@ -36,6 +37,8 @@ public:
    std::vector<Light*> lights;
    std::map<std::string, Material*> materials;
 
+
+   RayTracer();
    RayTracer(int, int, int, int, int);
 
    ~RayTracer();
@@ -47,11 +50,11 @@ public:
    void addLight(Light* light) {
       lights.push_back(light);
    }
-
    void traceRays(std::string);
    void readScene(std::istream&);
    void readModel(std::string, int size, Vector translate, Material* material);
 
+   Image traceRaysMatrix(int,int,int,int);
    Color castRayForPixel(int, int, uint64_t&) const;
 
 private:

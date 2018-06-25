@@ -16,9 +16,23 @@ Image::Image(int width, int height)
     _pixmap = (Color*)malloc(sizeof(Color) * _width * _height);
 }
 
+Image::Image()
+{}
+
 Image::~Image()
 {
     free(_pixmap);
+}
+
+void Image::SumColorFactor(Image * img)
+{
+    for (int y = 0; y < this->_height; y++)
+    {
+        for (int x = 0; x < this->_width; x++)
+        {
+            this->_pixmap[x * _height + y] = this->_pixmap[x * _height + y] + img->pixel(x, y); 
+        }
+    }
 }
 
 void Image::WriteTga(const char *outfile, bool scale_color)

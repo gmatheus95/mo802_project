@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
       outFile = "out.tga";
    }
 
-   rayTracer.traceRays(outFile);
+   rayTracer.traceRays(outFile  );
 
    exit(EXIT_SUCCESS);
 }

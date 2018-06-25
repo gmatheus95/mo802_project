@@ -16,12 +16,15 @@
 
 class Image {
 public:
+    Image();
     Image(int width, int height);
     ~Image();
 
     // if scale_color is true, the output targa will have its color space scaled
     // to the global max, otherwise it will be clamped at 1.0
     void WriteTga(const char *outfile, bool scale_color = true);
+
+    void SumColorFactor(Image*);
 
     void GenTestPattern();
 

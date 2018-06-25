@@ -26,6 +26,8 @@ RayTracer::RayTracer(int width_, int height_, int maxReflections_, int superSamp
  imageScale(1), depthComplexity(depthComplexity_), dispersion(5.0f),
  startingMaterial(new Air()) {}
 
+RayTracer::RayTracer(){}
+
 RayTracer::~RayTracer() {
    for (vector<Object*>::iterator itr = objects.begin(); itr < objects.end(); itr++) {
       delete *itr;
@@ -68,6 +70,19 @@ void RayTracer::traceRays(string fileName) {
    cout << "Rays cast: " << raysCast << endl;
 
    image.WriteTga(fileName.c_str(), false);
+}
+
+
+// MY PERSONAL FUNCTION
+Image RayTracer::traceRaysMatrix(int x, int y, int offset_x, int offset_y)
+{
+  camera.calculateWUV();
+  Image image(width, height);
+  uint64_t raysCast = 0;
+  for (int i = x; i < (x + offset_x); i++)
+    for (int j = y; j < (y + offset_y); j++)
+      image.pixel(i,j, castRayForPixel(i, j, raysCast));
+  return image;  
 }
 
 Color RayTracer::castRayForPixel(int x, int y, uint64_t& raysCast) const {
