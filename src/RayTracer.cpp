@@ -72,19 +72,6 @@ void RayTracer::traceRays(string fileName) {
    image.WriteTga(fileName.c_str(), false);
 }
 
-
-// MY PERSONAL FUNCTION
-Image RayTracer::traceRaysMatrix(int x, int y, int offset_x, int offset_y)
-{
-  camera.calculateWUV();
-  Image image(width, height);
-  uint64_t raysCast = 0;
-  for (int i = x; i < (x + offset_x); i++)
-    for (int j = y; j < (y + offset_y); j++)
-      image.pixel(i,j, castRayForPixel(i, j, raysCast));
-  return image;  
-}
-
 Color RayTracer::castRayForPixel(int x, int y, uint64_t& raysCast) const {
    double rayX = (x - width / 2)/2.0;
    double rayY = (y - height / 2)/2.0;

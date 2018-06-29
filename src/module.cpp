@@ -38,29 +38,28 @@
 #include <ctime>
 #include <iostream>
 #include "RayTracer.h"
-#include "Image.h"
 
 using namespace std;
 
-#define MAX_WIDTH 1920
-#define MAX_HEIGHT 1080
+// Here are the global definitions
+#define MAX_WIDTH 500
+#define MAX_HEIGHT 500
 #define MAX_REFLECTIONS 10
 
 #define OFFSET_WIDTH 250
 #define OFFSET_HEIGHT 250
 
 
-typedef struct Dimensions{
+struct Dimensions{
     int curr_x;
     int curr_y;
 };
 
-typedef struct ImagePartition{
-    int init_x;
-    int init_y;
-    int final_x;
-    int final_y;
-    Image imagePart;
+// Pixel representing positions and respective Color
+struct Pixel{
+    int x;
+    int y;
+    Color color;
 };
 
 // This class creates tasks.
@@ -80,23 +79,23 @@ public:
     bool next_task(const spitz::pusher& task)
     {
         spitz::ostream o;
-
-        
-                
+                     
         // Serialize the task into a binary stream
         o.write_data(&d,sizeof(Dimensions));
 
+        d.curr_x = d.curr_x + OFFSET_WIDTH;     
         // Advance in Y and get X back to 0
-        if (d.curr_x > MAX_WIDTH)
+        if (d.curr_x >= MAX_WIDTH)
         {
-            // Stop creating tasks
-            if (d.curr_y > MAX_HEIGHT)
-                return false;
-            d.curr_y = std::min<int>(d.curr_y + OFFSET_HEIGHT, MAX_HEIGHT);
+            d.curr_y = d.curr_y + OFFSET_HEIGHT;
             d.curr_x = 0;
-        }
-        else
-            d.curr_x += std::min<int>(d.curr_x + OFFSET_WIDTH, MAX_WIDTH);     
+            // Stop creating tasks
+            if (d.curr_y >= MAX_HEIGHT)
+                return false;
+        }            
+
+        // Debug for part to take
+        std::cout << "[JM] Current X: " << d.curr_x << " ||| Current Y:" << d.curr_y << std::endl;
 
         std::cout << "[JM] Task generated." << std::endl;
         
@@ -125,11 +124,17 @@ class worker : public spitz::worker
 private:
     RayTracer* rayTracer;
     Dimensions dim;
-    ImagePartition imgPart;
+    Pixel* pixelArray;
+    int count;
+    uint64_t raysCast;
 public:
     worker(int argc, const char *argv[])
     {
+        raysCast = 0;
         std::cout << "[WK] Worker created." << std::endl;
+
+        // Allocating pixelArray
+        pixelArray = (Pixel*) malloc(sizeof(Pixel) * MAX_WIDTH * MAX_HEIGHT);
 
         // Instanciating RayTracer
         rayTracer = new RayTracer(MAX_WIDTH,MAX_HEIGHT,MAX_REFLECTIONS,atoi(argv[2]),atoi(argv[3]));
@@ -143,7 +148,7 @@ public:
             cerr << "Failed opening file" << endl;
             exit(EXIT_FAILURE);
         }
-        rayTracer->readScene(inFileStream);
+        rayTracer->readScene(inFileStream);        
         inFileStream.close();
     }
     
@@ -152,24 +157,28 @@ public:
         // Binary stream used to store the output
         spitz::ostream o;
         
-        // Deserialize the task, process it and serialize the result
-        result.read_data(&d,sizeof(Dimensions));
-        //dim << o;
+        count = 0;
+
+        // Reading the area to be calculated
+        task.read_data(&dim,sizeof(Dimensions));
 
         int offset_x, offset_y;
 
-        offset_x = ((dim.curr_x + OFFSET_WIDTH) > MAX_WIDTH) ? MAX_WIDTH : (dim.curr_x + OFFSET_WIDTH);
-        offset_y = ((dim.curr_y + OFFSET_HEIGHT) > MAX_HEIGHT) ? MAX_HEIGHT : (dim.curr_y + OFFSET_HEIGHT);
+        // Here we define the offset of currentx + offset OR max size for a dimension
+        offset_x = ((dim.curr_x + OFFSET_WIDTH) > MAX_WIDTH) ? MAX_WIDTH - 1: (dim.curr_x + OFFSET_WIDTH);
+        offset_y = ((dim.curr_y + OFFSET_HEIGHT) > MAX_HEIGHT) ? MAX_HEIGHT - 1: (dim.curr_y + OFFSET_HEIGHT);
 
-        // Must finish implementation of this function!
-        imgPart.init_x = dim.curr_x;
-        imgPart.init_y = dim.curr_y;
-        imgPart.final_x = offset_x;
-        imgPart.final_y = offset_y;
-        imgPart.imagePart = rayTracer->traceRaysMatrix(dim.curr_x, dim.curr_y, offset_x, offset_y);
-
-        // Must find a way to take the relevant pixels from this imgPart and add it to final Image
-        o.write_data(&imgPart,sizeof(ImagePartition));
+        // Cast ray for specific pixel and add it to ostream
+        for (int i = dim.curr_x; i < offset_x; i++)
+        {
+            for (int j = dim.curr_y; j < offset_y; j++)
+            {
+                pixelArray[count].x = i;
+                pixelArray[count].y = j;
+                pixelArray[count++].color = rayTracer->castRayForPixel(i,j,raysCast);
+                o.write_data(pixelArray,sizeof(Pixel));
+            }
+        }
 
         // Send the result to the Spitz runtime
         result.push(o);
@@ -186,26 +195,26 @@ public:
 class committer : public spitz::committer
 {
 private: 
-    Image* finalImg;
+    Image finalImg;
+    Pixel currPixel;
 public:
-    committer(int argc, const char *argv[], spitz::istream& jobinfo)
+    // Initializing commiter alongisde with finalImg
+    committer(int argc, const char *argv[], spitz::istream& jobinfo):finalImg(MAX_WIDTH, MAX_HEIGHT)
     {
-        std::cout << "[CO] Committer created." << std::endl;
+        std::cout << "[CO] Committer created." << std::endl;    
         
-        finalImg = new Image(MAX_WIDTH, MAX_HEIGHT);
     }
     
     int commit_task(spitz::istream& result)
     {
         // Deserialize the result from the task and use it 
         // to compose the final result
-        // ...
-        ImagePartition imgPar;
-        result.read_data(&imgPar,sizeof(ImagePartition));
-
-        // this guy here sums the matrixes accordingly
-        finalImg->SumColorFactor(&imgPar.imagePart);
-
+        while(result.has_data()){
+            // Read pixel from stream
+            result.read_data(&currPixel,sizeof(Pixel));
+            // Add processed pixel to finalImg
+            finalImg.pixel(currPixel.x,currPixel.y,currPixel.color);
+        }
         std::cout << "[CO] Result committed." << std::endl;
 
         return 0;
@@ -217,19 +226,15 @@ public:
 
     int commit_job(const spitz::pusher& final_result) 
     {
-        // Process the final result
-        // A result must be pushed even if the final 
-        // result is not passed on
+        // Publish image in out.tga
         string outFile = "out.tga";
-        finalImg->WriteTga(outFile.c_str(), false);
-        //final_result.push(NULL, 0);
+        finalImg.WriteTga(outFile.c_str(), false);
+        final_result.push(NULL, 0);
         return 0;
     }
 
     ~committer()
-    {
-        
-    }
+    {    }
 };
 
 // The factory binds the user code with the Spitz C++ wrapper code.
