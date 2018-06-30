@@ -79,9 +79,6 @@ public:
     {
         spitz::ostream o;
                 
-        // Debug for part to take
-        std::cout << "[JM] Current X: " << d.curr_x << " ||| Current Y:" << d.curr_y << std::endl;
-
         // Serialize the task into a binary stream
         o.write_data(&d,sizeof(Dimensions));
 
@@ -130,7 +127,6 @@ class worker : public spitz::worker
 private:
     RayTracer* rayTracer;
     Dimensions dim;
-    Pixel* pixelArray;
     int count;
     uint64_t raysCast;
     int OFFSET_WIDTH;
@@ -143,9 +139,6 @@ public:
 
         raysCast = 0;
         std::cout << "[WK] Worker created." << std::endl;
-
-        // Allocating pixelArray
-        pixelArray = (Pixel*) malloc(sizeof(Pixel) * MAX_WIDTH * MAX_HEIGHT);
 
         // Instanciating RayTracer
         rayTracer = new RayTracer(MAX_WIDTH,MAX_HEIGHT,MAX_REFLECTIONS,atoi(argv[2]),atoi(argv[3]));
@@ -171,6 +164,7 @@ public:
         
         count = 0;
 
+        Pixel* mPixel = (Pixel*)malloc(sizeof(Pixel));
         // Reading the area to be calculated
         task.read_data(&dim,sizeof(Dimensions));
 
@@ -180,15 +174,17 @@ public:
         offset_x = ((dim.curr_x + OFFSET_WIDTH) > MAX_WIDTH) ? MAX_WIDTH - 1: (dim.curr_x + OFFSET_WIDTH);
         offset_y = ((dim.curr_y + OFFSET_HEIGHT) > MAX_HEIGHT) ? MAX_HEIGHT - 1: (dim.curr_y + OFFSET_HEIGHT);
 
+        std::cout << "[WK] Working on " << dim.curr_x << "x" << dim.curr_y << " to " << offset_x << "x" << offset_y << std::endl;
+
         // Cast ray for specific pixel and add it to ostream
         for (int i = dim.curr_x; i < offset_x; i++)
         {
             for (int j = dim.curr_y; j < offset_y; j++)
             {
-                pixelArray[count].x = i;
-                pixelArray[count].y = j;
-                pixelArray[count].color = rayTracer->castRayForPixel(i,j,raysCast);
-                o.write_data(&(pixelArray[count++]),sizeof(Pixel));
+                mPixel->x = i;
+                mPixel->y = j;
+                mPixel->color = rayTracer->castRayForPixel(i,j,raysCast);
+                o.write_data(mPixel,sizeof(Pixel));
             }
         }
 
@@ -226,7 +222,6 @@ public:
             // Read pixel from stream
             result.read_data(&currPixel,sizeof(Pixel));
             // Add processed pixel to finalImg
-            //std::cout << "[PIXEL] " << currPixel.x << "-" << currPixel.y << "!!!" << std::endl;
             finalImg.pixel(currPixel.x,currPixel.y,currPixel.color);
         }
         std::cout << "[CO] Result committed." << std::endl;
