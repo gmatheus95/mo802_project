@@ -53,7 +53,7 @@ public:
    void traceRays(std::string);
    void readScene(std::istream&);
    void readModel(std::string, int size, Vector translate, Material* material);
-
+   void initializeComponentsToTraceRays();
    Image traceRaysMatrix(int,int,int,int);
    Color castRayForPixel(int, int, uint64_t&) const;
 

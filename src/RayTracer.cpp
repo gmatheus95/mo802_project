@@ -40,6 +40,16 @@ RayTracer::~RayTracer() {
    delete startingMaterial;
 }
 
+void RayTracer::initializeComponentsToTraceRays()
+{
+  camera.calculateWUV();
+  // Reset depthComplexity to avoid unnecessary loops.
+  if (dispersion < 0) {
+    depthComplexity = 1;
+  }
+  imageScale = camera.screenWidth / (float)width;
+}
+
 void RayTracer::traceRays(string fileName) {
    int columnsCompleted = 0;
    camera.calculateWUV();

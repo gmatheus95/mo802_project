@@ -42,8 +42,8 @@
 using namespace std;
 
 // Here are the global definitions
-#define MAX_WIDTH 500
-#define MAX_HEIGHT 500
+#define MAX_WIDTH 1920
+#define MAX_HEIGHT 1080
 #define MAX_REFLECTIONS 10
 
 #define OFFSET_WIDTH 250
@@ -138,7 +138,7 @@ public:
 
         // Instanciating RayTracer
         rayTracer = new RayTracer(MAX_WIDTH,MAX_HEIGHT,MAX_REFLECTIONS,atoi(argv[2]),atoi(argv[3]));
-        
+
         // Opening and reading scene from argv1
         char* inFile = (char*)argv[1];
         ifstream inFileStream;
@@ -149,6 +149,7 @@ public:
             exit(EXIT_FAILURE);
         }
         rayTracer->readScene(inFileStream);        
+        rayTracer->initializeComponentsToTraceRays();
         inFileStream.close();
     }
     
@@ -175,8 +176,8 @@ public:
             {
                 pixelArray[count].x = i;
                 pixelArray[count].y = j;
-                pixelArray[count++].color = rayTracer->castRayForPixel(i,j,raysCast);
-                o.write_data(pixelArray,sizeof(Pixel));
+                pixelArray[count].color = rayTracer->castRayForPixel(i,j,raysCast);
+                o.write_data(&(pixelArray[count++]),sizeof(Pixel));
             }
         }
 
@@ -213,6 +214,7 @@ public:
             // Read pixel from stream
             result.read_data(&currPixel,sizeof(Pixel));
             // Add processed pixel to finalImg
+            //std::cout << "[PIXEL] " << currPixel.x << "-" << currPixel.y << "!!!" << std::endl;
             finalImg.pixel(currPixel.x,currPixel.y,currPixel.color);
         }
         std::cout << "[CO] Result committed." << std::endl;
