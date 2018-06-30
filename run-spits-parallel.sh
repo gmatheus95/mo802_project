@@ -56,6 +56,6 @@ do
     pushd $RUNSCNDIR
     rm -rf nodes* jm.* log
     (time ../../$PROGRAM $PPFLAGS ../../$MODULE \
-    ../../$SCENE $SUPER_SAMPLES $DEPTH_COMPLEXITY ../../$OUTFILE) 2>&1 | tee ../../$OUTLOG
+    ../../$SCENE $SUPER_SAMPLES $DEPTH_COMPLEXITY ../../$OUTFILE 500 500) 2>&1 | tee ../../$OUTLOG
     popd
 done

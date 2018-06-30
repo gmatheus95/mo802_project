@@ -46,10 +46,6 @@ using namespace std;
 #define MAX_HEIGHT 1080
 #define MAX_REFLECTIONS 10
 
-#define OFFSET_WIDTH 250
-#define OFFSET_HEIGHT 250
-
-
 struct Dimensions{
     int curr_x;
     int curr_y;
@@ -67,21 +63,32 @@ class job_manager : public spitz::job_manager
 {
 private:
     Dimensions d;
-
+    int OFFSET_WIDTH;
+    int OFFSET_HEIGHT;
 public:
     job_manager(int argc, const char *argv[], spitz::istream& jobinfo)
     {
         std::cout << "[JM] Job manager created." << std::endl;
         d.curr_x = 0;
         d.curr_y = 0;
+        OFFSET_WIDTH = atoi(argv[5]);
+        OFFSET_HEIGHT = atoi(argv[6]);
     }
     
     bool next_task(const spitz::pusher& task)
     {
         spitz::ostream o;
-                     
+                
+        // Debug for part to take
+        std::cout << "[JM] Current X: " << d.curr_x << " ||| Current Y:" << d.curr_y << std::endl;
+
         // Serialize the task into a binary stream
         o.write_data(&d,sizeof(Dimensions));
+
+        if (d.curr_y >= MAX_HEIGHT)
+        {
+            return false;
+        }
 
         d.curr_x = d.curr_x + OFFSET_WIDTH;     
         // Advance in Y and get X back to 0
@@ -91,11 +98,10 @@ public:
             d.curr_x = 0;
             // Stop creating tasks
             if (d.curr_y >= MAX_HEIGHT)
+            {
                 return false;
+            }
         }            
-
-        // Debug for part to take
-        std::cout << "[JM] Current X: " << d.curr_x << " ||| Current Y:" << d.curr_y << std::endl;
 
         std::cout << "[JM] Task generated." << std::endl;
         
@@ -127,9 +133,14 @@ private:
     Pixel* pixelArray;
     int count;
     uint64_t raysCast;
+    int OFFSET_WIDTH;
+    int OFFSET_HEIGHT;    
 public:
     worker(int argc, const char *argv[])
     {
+        OFFSET_WIDTH = atoi(argv[5]);
+        OFFSET_HEIGHT = atoi(argv[6]);
+
         raysCast = 0;
         std::cout << "[WK] Worker created." << std::endl;
 
@@ -198,9 +209,10 @@ class committer : public spitz::committer
 private: 
     Image finalImg;
     Pixel currPixel;
+    string fileName;
 public:
     // Initializing commiter alongisde with finalImg
-    committer(int argc, const char *argv[], spitz::istream& jobinfo):finalImg(MAX_WIDTH, MAX_HEIGHT)
+    committer(int argc, const char *argv[], spitz::istream& jobinfo):finalImg(MAX_WIDTH, MAX_HEIGHT),fileName(argv[4])
     {
         std::cout << "[CO] Committer created." << std::endl;    
         
@@ -229,8 +241,7 @@ public:
     int commit_job(const spitz::pusher& final_result) 
     {
         // Publish image in out.tga
-        string outFile = "out.tga";
-        finalImg.WriteTga(outFile.c_str(), false);
+        finalImg.WriteTga(fileName.c_str(), false);
         final_result.push(NULL, 0);
         return 0;
     }

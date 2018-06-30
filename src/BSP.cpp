@@ -18,7 +18,7 @@ void BSP::build() {
    }
 
    // For debugging.
-   if (true) {
+   if (false) {
       for (int i = 0; i < depth; i++) {
         cout << "\t";
       }
