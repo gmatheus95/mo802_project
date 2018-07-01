@@ -1,0 +1,26 @@
+{
+  "InstanceCount":1,
+  "BlockDurationMinutes": 360,
+  "SpotPrice": "0.9",
+  "LaunchSpecification": 
+    {
+      "ImageId": "ami-43a15f3e",
+      "InstanceType": "p2.xlarge",
+      "KeyName": "gramos_gpu_tests",
+      "SecurityGroupIds": ["sg-0b9db0419598b9f30"],
+      "SubnetId": "subnet-00e855ef9c7d08887",
+      "UserData": "$SHELL_SCRIPT$", 
+      "BlockDeviceMappings": [
+        {
+            "DeviceName": "/dev/sda1",
+            "VirtualName": "eth0",
+            "Ebs": {
+                "VolumeSize": 100,
+                "DeleteOnTermination": true,
+                "VolumeType": "gp2"
+            },
+            "NoDevice":""
+        }
+      ]
+    }
+}

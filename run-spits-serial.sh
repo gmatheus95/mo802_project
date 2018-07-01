@@ -6,7 +6,7 @@
 
 # You can either pass scenes individually as arguments or 
 # leave it blank to run all scenes in the 'scenes' folder
-SCENES="${@:1}"
+#SCENES="${@:1}"
 SCENES="${SCENES:-`ls scenes/*.scn`}"
 
 # Ray tracing parameters
@@ -32,5 +32,5 @@ do
     OUTFILE="$FILENAME.tga"
     OUTLOG="$FILENAME.log"
     echo $SCENE...
-    (time $PROGRAM $SCENE $SUPER_SAMPLES $DEPTH_COMPLEXITY $OUTFILE 250 250) 2>&1 | tee $OUTLOG
+    (time $PROGRAM $SCENE $SUPER_SAMPLES $DEPTH_COMPLEXITY $OUTFILE $1 $2) 2>&1 | tee $OUTLOG
 done
